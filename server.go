@@ -32,6 +32,7 @@ func NewServer(c Config) *FHIRServer {
 			Addr:    ":" + c.Port,
 		},
 		Config: c,
+		// Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
 		Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
 	}
 	return server

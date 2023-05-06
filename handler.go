@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -34,14 +33,17 @@ func (fserver *FHIRServer) RegisterHandlers() {
 func (fserver *FHIRServer) RegisterUSProfileHandlers() {
 	r := fserver.Base.Handler.(*chi.Mux)
 
+	l := fserver.Logger
+
 	for k, _ := range USCoreProfileResources {
 		r.Route(fmt.Sprintf("%s/%s", base, k), func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
+
+				l.Info().Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
+
 				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
-				if err != nil {
-					log.Fatal(err)
-				}
+				w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
 			})
 		})
 	}
@@ -76,7 +78,6 @@ func MetadataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/fhir+json")
-
 	w.WriteHeader(http.StatusOK)
 	w.Write(cap)
 }

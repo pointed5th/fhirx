@@ -3,7 +3,7 @@
 name = fhird
 build_dir = bin
 os = $(shell go env GOOS)
-arch = $(shell go env GOARCH)
+# arch = $(shell go env GOARCH)
 port = 9090
 image_version = 0.0.1
 image_tag = $(name)-image:v$(image_version)
@@ -23,7 +23,7 @@ run-server:
 	$(build_dir)/$(name) --verbose
 
 build-server:
-	GOOS=$(os) GOARCH=$(arch) CGO_ENABLED=0 go build -o $(build_dir)/$(name) .
+	GOOS=$(os) GOARCH=amd64 CGO_ENABLED=0 go build -o $(build_dir)/$(name) .
 
 build-image:
 	docker build -t $(image_tag) -f Dockerfile.multistage .
@@ -37,3 +37,7 @@ stop-container:
 start: build-image start-container
 
 stop: stop-container
+
+push-image:
+	docker tag $(image_tag) registry.digitalocean.com/fructose/$(image_tag)
+	docker push registry.digitalocean.com/fructose/$(image_tag)

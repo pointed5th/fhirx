@@ -10,82 +10,32 @@ import (
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
 )
 
-// map of resourcetype name to resource
-var USCoreProfileResources = map[string]fhir.ResourceType{
-	// fhir.ResourceTypeAllergyIntolerance,
-	"AllergyIntolerance": fhir.ResourceTypeAllergyIntolerance,
-	// fhir.ResourceTypeCarePlan,
-	"CarePlan": fhir.ResourceTypeCarePlan,
-	// fhir.ResourceTypeCareTeam,
-	"CareTeam": fhir.ResourceTypeCareTeam,
-	// fhir.ResourceTypeCondition,
-	"Condition": fhir.ResourceTypeCondition,
-	// fhir.ResourceTypeDevice,
-	"Device": fhir.ResourceTypeDevice,
-	// fhir.ResourceTypeDiagnosticReport,
-	"DiagnosticReport": fhir.ResourceTypeDiagnosticReport,
-	// fhir.ResourceTypeDocumentReference,
-	"DocumentReference": fhir.ResourceTypeDocumentReference,
-	// fhir.ResourceTypeEncounter,
-	"Encounter": fhir.ResourceTypeEncounter,
-	// fhir.ResourceTypeGoal,
-	"Goal": fhir.ResourceTypeGoal,
-	// fhir.ResourceTypeImmunization,
-	"Immunization": fhir.ResourceTypeImmunization,
-	// fhir.ResourceTypeLocation,
-	"Location": fhir.ResourceTypeLocation,
-	// fhir.ResourceTypeMedication,
-	"Medication": fhir.ResourceTypeMedication,
-	// fhir.ResourceTypeMedicationRequest,
-	"MedicationRequest": fhir.ResourceTypeMedicationRequest,
-	// fhir.ResourceTypeObservation,
-	"Observation": fhir.ResourceTypeObservation,
-	// fhir.ResourceTypeOrganization,
-	"Organization": fhir.ResourceTypeOrganization,
-	// fhir.ResourceTypePatient,
-	"Patient": fhir.ResourceTypePatient,
-	// fhir.ResourceTypePractitioner,
-	"Practitioner": fhir.ResourceTypePractitioner,
-	// fhir.ResourceTypePractitionerRole,
-	"PractitionerRole": fhir.ResourceTypePractitionerRole,
-	// fhir.ResourceTypeProcedure,
-	"Procedure": fhir.ResourceTypeProcedure,
-	// fhir.ResourceTypeProvenance,
-	"Provenance": fhir.ResourceTypeProvenance,
-	// fhir.ResourceTypeQuestionnaireResponse,
-	"QuestionnaireResponse": fhir.ResourceTypeQuestionnaireResponse,
-	// fhir.ResourceTypeRelatedPerson,
-	"RelatedPerson": fhir.ResourceTypeRelatedPerson,
-	// fhir.ResourceTypeServiceRequest,
-	"ServiceRequest": fhir.ResourceTypeServiceRequest,
-}
-
 // US Core Profile resources (https://www.hl7.org/fhir/us/core/#us-core-profiles)
-// type USCoreProfile struct {
-// 	ResourceTypeAllergyIntolerance    fhir.AllergyIntolerance
-// 	ResourceTypeCarePlan              fhir.CarePlan
-// 	ResourceTypeCareTeam              fhir.CareTeam
-// 	ResourceTypeCondition             fhir.Condition
-// 	ResourceTypeDevice                fhir.Device
-// 	ResourceTypeDiagnosticReport      fhir.DiagnosticReport
-// 	ResourceTypeDocumentReference     fhir.DocumentReference
-// 	ResourceTypeEncounter             fhir.Encounter
-// 	ResourceTypeGoal                  fhir.Goal
-// 	ResourceTypeImmunization          fhir.Immunization
-// 	ResourceTypeLocation              fhir.Location
-// 	ResourceTypeMedication            fhir.Medication
-// 	ResourceTypeMedicationRequest     fhir.MedicationRequest
-// 	ResourceTypeObservation           fhir.Observation
-// 	ResourceTypeOrganization          fhir.Organization
-// 	ResourceTypePatient               fhir.Patient
-// 	ResourceTypePractitioner          fhir.Practitioner
-// 	ResourceTypePractitionerRole      fhir.PractitionerRole
-// 	ResourceTypeProcedure             fhir.Procedure
-// 	ResourceTypeProvenance            fhir.Provenance
-// 	ResourceTypeQuestionnaireResponse fhir.QuestionnaireResponse
-// 	ResourceTypeRelatedPerson         fhir.RelatedPerson
-// 	ResourceTypeServiceRequest        fhir.ServiceRequest
-// }
+var USCoreProfileResources = map[string]fhir.ResourceType{
+	"AllergyIntolerance":    fhir.ResourceTypeAllergyIntolerance,
+	"CarePlan":              fhir.ResourceTypeCarePlan,
+	"CareTeam":              fhir.ResourceTypeCareTeam,
+	"Condition":             fhir.ResourceTypeCondition,
+	"Device":                fhir.ResourceTypeDevice,
+	"DiagnosticReport":      fhir.ResourceTypeDiagnosticReport,
+	"DocumentReference":     fhir.ResourceTypeDocumentReference,
+	"Encounter":             fhir.ResourceTypeEncounter,
+	"Goal":                  fhir.ResourceTypeGoal,
+	"Immunization":          fhir.ResourceTypeImmunization,
+	"Location":              fhir.ResourceTypeLocation,
+	"Medication":            fhir.ResourceTypeMedication,
+	"MedicationRequest":     fhir.ResourceTypeMedicationRequest,
+	"Observation":           fhir.ResourceTypeObservation,
+	"Organization":          fhir.ResourceTypeOrganization,
+	"Patient":               fhir.ResourceTypePatient,
+	"Practitioner":          fhir.ResourceTypePractitioner,
+	"PractitionerRole":      fhir.ResourceTypePractitionerRole,
+	"Procedure":             fhir.ResourceTypeProcedure,
+	"Provenance":            fhir.ResourceTypeProvenance,
+	"QuestionnaireResponse": fhir.ResourceTypeQuestionnaireResponse,
+	"RelatedPerson":         fhir.ResourceTypeRelatedPerson,
+	"ServiceRequest":        fhir.ResourceTypeServiceRequest,
+}
 
 func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 	port := os.Getenv("PORT")
@@ -133,17 +83,16 @@ func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 			Mode:              fhir.RestfulCapabilityModeServer,
 			Documentation:     nil,
 			Security:          nil,
-			// TODO: Add supported resources
-			Resource:    restResource,
-			SearchParam: nil,
-			Operation:   nil,
-			Compartment: nil,
+			Resource:          restResource,
+			SearchParam:       nil,
+			Operation:         nil,
+			Compartment:       nil,
 		},
 		{
 			Id:                nil,
 			Extension:         nil,
 			ModifierExtension: nil,
-			Mode:              fhir.RestfulCapabilityModeClient,
+			Mode:              fhir.RestfulCapabilityModeServer,
 			Documentation:     nil,
 		},
 	}
