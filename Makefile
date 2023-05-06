@@ -37,8 +37,3 @@ stop-container:
 start: build-image start-container
 
 stop: stop-container
-
-fhir-examples:
-	wget https://www.hl7.org/fhir/R4/examples-json.zip -O examples-json.zip
-	unzip examples-json.zip -d examples-json
-	rm -rf examples-json.zip

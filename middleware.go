@@ -9,28 +9,29 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-var SupportedContentTypes = []string{
-	"application/x-www-form-urlencoded",
-	"application/fhir+json",
-	"application/fhir+xml",
-	// the next two are for backwards compatibility with DSTU2 and STU3
-	"application/json+fhir",
-	"application/xml+fhir",
+type FHIRMIMEType int
+
+const (
+	FHIRJSON FHIRMIMEType = iota
+	FHIRXML
+)
+
+func (f FHIRMIMEType) String() string {
+	return []string{"application/fhir+json", "application/fhir+xml"}[f]
 }
 
 func (fserver *FHIRServer) RegisterMiddlewares() error {
 	r := fserver.Base.Handler.(*chi.Mux)
 
-	// keep logger first
-	// r.Use(middleware.Logger)
-	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+	r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{Logger: &fserver.Logger}))
+	r.Use(middleware.RedirectSlashes)
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(middleware.StripSlashes)
 	r.Use(SetDefaultTimeZone)
-	r.Use(middleware.AllowContentType(SupportedContentTypes...))
-	//r.Use(ClientContentTypePrefer)
+	r.Use(middleware.AllowContentType(FHIRJSON.String(), FHIRXML.String()))
+
 	return nil
 }
 

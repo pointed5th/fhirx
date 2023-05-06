@@ -40,14 +40,39 @@ func NewServer(c Config) *FHIRServer {
 func (fserver *FHIRServer) Serve() error {
 	l := fserver.Logger
 
-	err := fserver.RegisterMiddlewares()
+	var err error
+
+	err = fserver.RegisterMiddlewares()
 
 	if err != nil {
 		return err
 	}
 
 	fserver.RegisterHandlers()
+	fserver.RegisterUSProfileHandlers()
 
+	if err != nil {
+		return err
+	}
+
+	if fserver.Config.Verbose {
+		fserver.PrintRoutes()
+	}
+
+	if fserver.Config.Verbose {
+		l.Info().Msgf("Listening on port %s", fserver.Config.Port)
+	}
+
+	err = fserver.Base.ListenAndServe()
+
+	if err != nil && err != http.ErrServerClosed {
+		return err
+	}
+
+	return nil
+}
+
+func (fserver *FHIRServer) PrintRoutes() error {
 	router := fserver.Base.Handler.(*chi.Mux)
 
 	if fserver.Config.Verbose {
@@ -69,16 +94,8 @@ func (fserver *FHIRServer) Serve() error {
 		if err := chi.Walk(router, walker); err != nil {
 			return err
 		}
+
 		fmt.Print(tsep + "\n")
-
-	}
-
-	l.Info().Msgf("Listening on port %s", fserver.Config.Port)
-
-	err = fserver.Base.ListenAndServe()
-
-	if err != nil && err != http.ErrServerClosed {
-		return err
 	}
 
 	return nil

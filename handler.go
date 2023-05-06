@@ -3,129 +3,80 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"html"
-	"html/template"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
+var version = "v1"
+var base = fmt.Sprintf("/api/%s", version)
+
 func (fserver *FHIRServer) RegisterHandlers() {
 	r := fserver.Base.Handler.(*chi.Mux)
 
-	apiVersion := "v1"
-	base := fmt.Sprintf("/api/%s", apiVersion)
-	pingEndpoint := "/ping"
-
 	r.Route(base, func(r chi.Router) {
-		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "GET" || r.Method == "HEAD" && r.URL.Path == pingEndpoint {
-				w.Header().Set("Content-Type", "text/plain")
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("."))
-				return
-			}
-		})
-
-		r.Get("/metadata", func(w http.ResponseWriter, r *http.Request) {
-			cap, err := GetCapabilityStatement()
-
-			if err != nil {
-				fmt.Errorf("error getting capability statement: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("server error"))
-			}
-
-			capJson, err := json.Marshal(cap)
-
-			if err != nil {
-				fmt.Errorf("error marshalling capability statement: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("server error"))
-			}
-
-			w.Header().Set("Content-Type", "application/fhir+json")
-
-			w.WriteHeader(http.StatusOK)
-			w.Write(capJson)
-		})
-
-		// US Core Profile resource routes
-		for _, resource := range USCoreProfileResources {
-
-			// Get all resources
-			r.Get(fmt.Sprintf("/%s", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("%s Search", resource)))
-				if err != nil {
-					log.Fatal(err)
-				}
-			})
-
-			// Create a resource
-			r.Post(fmt.Sprintf("/%s", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("%s Created", resource)))
-				if err != nil {
-					log.Fatal(err)
-				}
-			})
-
-			// Get a resource by id
-			r.Get(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("%s Read", resource)))
-				if err != nil {
-					log.Fatal(err)
-				}
-			})
-
-			// Update a resource by id
-			r.Put(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("%s Updated", resource)))
-				if err != nil {
-					log.Fatal(err)
-				}
-			})
-
-			//
-			r.Delete(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
-				_, err := w.Write([]byte(fmt.Sprintf("%s Deleted", resource)))
-				if err != nil {
-					log.Fatal(err)
-				}
-			})
-		}
+		r.Get("/ping", PingHandler)
+		r.Get("/metadata", MetadataHandler)
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
-		_, err := w.Write([]byte("Not Found"))
-		if err != nil {
-			fmt.Errorf("error writing response: %s", err.Error())
-			log.Fatal(err)
-		}
+		w.Write([]byte("Not Found"))
 	})
 
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(405)
-		_, err := w.Write([]byte("Not Allowed"))
-		if err != nil {
-			log.Fatal(err)
-		}
+		w.Write([]byte("Not Allowed"))
 	})
 }
 
-func PostPatientHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(200)
-	_, err := w.Write([]byte("Patient Created"))
-	if err != nil {
-		log.Fatal(err)
+func (fserver *FHIRServer) RegisterUSProfileHandlers() {
+	r := fserver.Base.Handler.(*chi.Mux)
+
+	for k, _ := range USCoreProfileResources {
+		r.Route(fmt.Sprintf("%s/%s", base, k), func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
+				if err != nil {
+					log.Fatal(err)
+				}
+			})
+		})
 	}
 }
-func EscapeHTML(s string) template.HTML {
-	return template.HTML(html.UnescapeString(s))
+
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	pingEndpoint := "/ping"
+
+	if r.Method == "GET" || r.Method == "HEAD" && r.URL.Path == pingEndpoint {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("."))
+		return
+	}
+}
+
+func MetadataHandler(w http.ResponseWriter, r *http.Request) {
+	stmt, err := GetCapabilityStatement()
+
+	if err != nil {
+		fmt.Printf("error getting capability statement: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("server error"))
+	}
+
+	cap, err := json.Marshal(stmt)
+
+	if err != nil {
+		fmt.Printf("error marshalling capability statement: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("server error"))
+	}
+
+	w.Header().Set("Content-Type", "application/fhir+json")
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(cap)
 }
