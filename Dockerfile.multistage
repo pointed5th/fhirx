@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.19 AS build-stage
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+ENV PORT 9090
+
+RUN make build-server
+
+FROM gcr.io/distroless/base-debian11 AS build-release-stage
+
+WORKDIR /
+
+COPY --from=build-stage /app/bin/fhir-server /app/bin/fhir-server
+COPY --from=build-stage /app/www /app/www
+COPY --from=build-stage /app/Makefile /app/Makefile
+
+EXPOSE 9090/tcp
+
+CMD ["/app/bin/fhir-server", "--verbose"]
+
