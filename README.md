@@ -7,7 +7,7 @@
 1. Clone the repo
 
 ```bash
-git clone https://github.com/hawyar/fhir-server.git
+git clone https://github.com/hawyar/fhird.git
 ```
 
 2. Start the server in a container

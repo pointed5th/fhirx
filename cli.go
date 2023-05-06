@@ -13,7 +13,7 @@ const (
 func Run() error {
 	app := cli.NewApp()
 
-	app.Name = "fhir-server"
+	app.Name = "fhird"
 	app.Description = "HL7 FHIR server implementation for fructose.dev"
 	app.Version = "1.0.0"
 	app.BashComplete = cli.DefaultAppComplete

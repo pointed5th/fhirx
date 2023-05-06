@@ -73,7 +73,7 @@ func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 	url := fmt.Sprintf("http://localhost:%s", port)
 	title := "Capability Statement for FHIR Server"
 	purpose := "Main EHR capability statement, published for contracting and operational support"
-	name := "fhir-server"
+	name := "fhird"
 	publisher := "fructose"
 	copyright := "Copyright (c) 2023"
 	experimental := true

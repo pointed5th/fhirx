@@ -11,11 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Page struct {
-	Title string
-}
-
-func (fserver *FServer) RegisterHandlers() {
+func (fserver *FHIRServer) RegisterHandlers() {
 	r := fserver.Base.Handler.(*chi.Mux)
 
 	apiVersion := "v1"
@@ -57,10 +53,50 @@ func (fserver *FServer) RegisterHandlers() {
 
 		// US Core Profile resource routes
 		for _, resource := range USCoreProfileResources {
+
+			// Get all resources
 			r.Get(fmt.Sprintf("/%s", resource), func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/fhir+json")
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("US Core Profile Resource"))
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("%s Search", resource)))
+				if err != nil {
+					log.Fatal(err)
+				}
+			})
+
+			// Create a resource
+			r.Post(fmt.Sprintf("/%s", resource), func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("%s Created", resource)))
+				if err != nil {
+					log.Fatal(err)
+				}
+			})
+
+			// Get a resource by id
+			r.Get(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("%s Read", resource)))
+				if err != nil {
+					log.Fatal(err)
+				}
+			})
+
+			// Update a resource by id
+			r.Put(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("%s Updated", resource)))
+				if err != nil {
+					log.Fatal(err)
+				}
+			})
+
+			//
+			r.Delete(fmt.Sprintf("/%s/{id}", resource), func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+				_, err := w.Write([]byte(fmt.Sprintf("%s Deleted", resource)))
+				if err != nil {
+					log.Fatal(err)
+				}
 			})
 		}
 	})

@@ -18,7 +18,7 @@ var SupportedContentTypes = []string{
 	"application/xml+fhir",
 }
 
-func (fserver *FServer) RegisterMiddlewares() error {
+func (fserver *FHIRServer) RegisterMiddlewares() error {
 	r := fserver.Base.Handler.(*chi.Mux)
 
 	// keep logger first
