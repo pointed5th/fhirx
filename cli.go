@@ -38,7 +38,7 @@ func Run() error {
 			config.Port = defaultPort
 		}
 
-		server := NewServer(config)
+		server := NewFHIRD(config)
 
 		err = server.Serve()
 

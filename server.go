@@ -16,17 +16,17 @@ type Config struct {
 	CGOEnabled  bool
 }
 
-type FHIRServer struct {
+type FHIRD struct {
 	Base   *http.Server
 	Config Config
 	Logger zerolog.Logger
 }
 
-func NewServer(c Config) *FHIRServer {
+func NewFHIRD(c Config) *FHIRD {
 	// UNIX Time is faster and smaller than most timestamps
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	server := &FHIRServer{
+	server := &FHIRD{
 		Base: &http.Server{
 			Handler: chi.NewRouter(),
 			Addr:    ":" + c.Port,
@@ -38,7 +38,7 @@ func NewServer(c Config) *FHIRServer {
 	return server
 }
 
-func (fserver *FHIRServer) Serve() error {
+func (fserver *FHIRD) Serve() error {
 	l := fserver.Logger
 
 	var err error
@@ -50,7 +50,7 @@ func (fserver *FHIRServer) Serve() error {
 	}
 
 	fserver.RegisterHandlers()
-	fserver.RegisterUSProfileHandlers()
+	fserver.USCoreProfileResourcesHandlers()
 
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func (fserver *FHIRServer) Serve() error {
 	return nil
 }
 
-func (fserver *FHIRServer) PrintRoutes() error {
+func (fserver *FHIRD) PrintRoutes() error {
 	router := fserver.Base.Handler.(*chi.Mux)
 
 	if fserver.Config.Verbose {

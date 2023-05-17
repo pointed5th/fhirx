@@ -8,10 +8,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var version = "v1"
-var base = fmt.Sprintf("/api/%s", version)
+var version = 1
+var base = fmt.Sprintf("/api/v%d", version)
 
-func (fserver *FHIRServer) RegisterHandlers() {
+func (fserver *FHIRD) RegisterHandlers() {
 	r := fserver.Base.Handler.(*chi.Mux)
 
 	r.Route(base, func(r chi.Router) {
@@ -30,7 +30,7 @@ func (fserver *FHIRServer) RegisterHandlers() {
 	})
 }
 
-func (fserver *FHIRServer) RegisterUSProfileHandlers() {
+func (fserver *FHIRD) USCoreProfileResourcesHandlers() {
 	r := fserver.Base.Handler.(*chi.Mux)
 
 	l := fserver.Logger
@@ -40,7 +40,7 @@ func (fserver *FHIRServer) RegisterUSProfileHandlers() {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
 
-				l.Info().Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
+				l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
 
 				w.WriteHeader(200)
 				w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))

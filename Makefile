@@ -3,12 +3,12 @@
 name = fhird
 build_dir = bin
 os = $(shell go env GOOS)
+# DO app platform only supports amd64
 # arch = $(shell go env GOARCH)
 port = 9090
 image_version = 0.0.1
-image_tag = $(name)-image:v$(image_version)
-container = $(name)-container
-air_hot_reload = bin/air
+image_tag = $(name):v$(image_version)
+container = $(name)
 
 export DOCKER_BUILDKIT=1
 

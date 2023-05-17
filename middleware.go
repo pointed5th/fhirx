@@ -66,7 +66,7 @@ func (s Paramateres) String() string {
 	return fmt.Sprintf("format=%s pretty=%t summary=%s elements=%s", s.Format, s.Pretty, s.Summary, s.Elements)
 }
 
-func (fserver *FHIRServer) RegisterMiddlewares() error {
+func (fserver *FHIRD) RegisterMiddlewares() error {
 	r := fserver.Base.Handler.(*chi.Mux)
 
 	r.Use(middleware.RealIP)
