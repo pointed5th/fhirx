@@ -14,7 +14,7 @@ func Run() error {
 	app := cli.NewApp()
 
 	app.Name = "fhird"
-	app.Description = "HL7 FHIR server implementation for fructose.dev"
+	app.Description = "HL7 FHIR Server Implementation"
 	app.Version = "1.0.0"
 	app.BashComplete = cli.DefaultAppComplete
 	app.Flags = []cli.Flag{

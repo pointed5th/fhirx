@@ -45,6 +45,15 @@ func (fserver *FHIRD) USCoreProfileResourcesHandlers() {
 				w.WriteHeader(200)
 				w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
 			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
+
+				l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("POST")
+
+				w.WriteHeader(200)
+				w.Write([]byte(fmt.Sprintf("POST %s", r.URL.Path)))
+			})
 		})
 	}
 }

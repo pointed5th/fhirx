@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func TestNewLOINICTerminologyService(t *testing.T) {
+func TestNewLOINCTerminologyService(t *testing.T) {
 	var err error
 
 	err = godotenv.Load()
@@ -23,7 +23,7 @@ func TestNewLOINICTerminologyService(t *testing.T) {
 		t.Error("username or password not set: check .env file")
 	}
 
-	l, err := NewLOINICTerminologyService(username, pass)
+	l, err := NewLOINCTerminologyService(username, pass)
 
 	if err != nil {
 		t.Error("error creating LOINC terminology service")
