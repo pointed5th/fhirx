@@ -1,12 +1,11 @@
 .PHONY: test build clean
 
 name = fhird
-build_dir = bin
+build_dir = build
 os = $(shell go env GOOS)
-# DO app platform only supports amd64
-# arch = $(shell go env GOARCH)
+arch = $(shell go env GOARCH)
 port = 9090
-image_version = 0.0.1
+image_version = 1.0.0
 image_tag = $(name):v$(image_version)
 container = $(name)
 

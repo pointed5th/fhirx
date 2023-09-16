@@ -41,14 +41,14 @@ func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 	port := os.Getenv("PORT")
 
 	if port == "" {
-		port = defaultPort
+		port = "9090"
 	}
 
 	url := fmt.Sprintf("http://localhost:%s", port)
 	title := "Capability Statement for the FHIR Server"
-	purpose := "Main EHR capability statement, published for contracting and operational support"
+	purpose := "Experimental HL7 FHIR R4 Server"
 	name := "fhird"
-	publisher := "fructose"
+	publisher := "fhird admin"
 	copyright := "Copyright (c) 2023"
 	experimental := true
 	version := "1.0.0"
@@ -87,13 +87,6 @@ func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 			SearchParam:       nil,
 			Operation:         nil,
 			Compartment:       nil,
-		},
-		{
-			Id:                nil,
-			Extension:         nil,
-			ModifierExtension: nil,
-			Mode:              fhir.RestfulCapabilityModeServer,
-			Documentation:     nil,
 		},
 	}
 

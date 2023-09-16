@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/docgen"
 	"github.com/rs/zerolog"
 )
 
@@ -19,52 +21,58 @@ type Config struct {
 type FHIRD struct {
 	Base   *http.Server
 	Config Config
-	Logger zerolog.Logger
+	Logger *Logger
 }
 
-func NewFHIRD(c Config) *FHIRD {
-	// UNIX Time is faster and smaller than most timestamps
+func NewFHIRD(c Config) (*FHIRD, error) {
+	l, err := NewConsoleLogger()
+
+	if err != nil {
+		return nil, err
+	}
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	server := &FHIRD{
+	if err != nil {
+		return nil, err
+	}
+
+	return &FHIRD{
 		Base: &http.Server{
 			Handler: chi.NewRouter(),
 			Addr:    ":" + c.Port,
 		},
 		Config: c,
-		// Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
-		Logger: zerolog.New(os.Stdout).With().Timestamp().Logger(),
-	}
-	return server
+		Logger: l,
+	}, nil
 }
 
-func (fserver *FHIRD) Serve() error {
-	l := fserver.Logger
+func (f *FHIRD) Serve() error {
+	l := f.Logger.Sugar()
 
 	var err error
 
-	err = fserver.RegisterMiddlewares()
+	err = f.RegisterMiddlewares()
 
 	if err != nil {
 		return err
 	}
 
-	fserver.RegisterHandlers()
-	fserver.USCoreProfileResourcesHandlers()
+	f.RegisterHandlers()
 
 	if err != nil {
 		return err
 	}
 
-	if fserver.Config.Verbose {
-		fserver.PrintRoutes()
+	l.Info("registered handlers successfully")
+
+	if err != nil {
+		return errors.New("failed to create logger")
 	}
 
-	if fserver.Config.Verbose {
-		l.Info().Msgf("Listening on port %s", fserver.Config.Port)
-	}
+	l.Infof("listening on port %s", f.Config.Port)
 
-	err = fserver.Base.ListenAndServe()
+	err = f.Base.ListenAndServe()
 
 	if err != nil && err != http.ErrServerClosed {
 		return err
@@ -73,10 +81,44 @@ func (fserver *FHIRD) Serve() error {
 	return nil
 }
 
-func (fserver *FHIRD) PrintRoutes() error {
-	router := fserver.Base.Handler.(*chi.Mux)
+func (f *FHIRD) GenerateDocs() error {
+	r := f.Base.Handler.(*chi.Mux)
 
-	if fserver.Config.Verbose {
+	doc := docgen.MarkdownRoutesDoc(r, docgen.MarkdownOpts{
+		ProjectPath: "https://github.com/hawyar/fhird",
+		Intro:       "fructose API docs",
+	})
+
+	readme, err := os.OpenFile("README.md", os.O_APPEND|os.O_WRONLY, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	defer readme.Close()
+
+	_, err = readme.WriteString("\n")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = readme.WriteString(doc)
+
+	if err != nil {
+		return err
+	}
+
+	l := f.Logger.Sugar()
+
+	l.Info("Generated docs successfully")
+
+	return nil
+}
+func (f *FHIRD) PrintRoutes() error {
+	router := f.Base.Handler.(*chi.Mux)
+
+	if f.Config.Verbose {
 		fmt.Println()
 		theader := fmt.Sprintf("%-6s | %-6s\n", "METHOD", "ROUTE")
 		tsep := fmt.Sprintf("%-6s + %-6s\n", "------", "------")

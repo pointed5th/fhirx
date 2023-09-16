@@ -11,11 +11,15 @@ import (
 var version = 1
 var base = fmt.Sprintf("/api/v%d", version)
 
-func (fserver *FHIRD) RegisterHandlers() {
-	r := fserver.Base.Handler.(*chi.Mux)
+type IndexPageContext struct {
+	Title  string `json:"title"`
+	Header string `json:"header"`
+}
+
+func (f *FHIRD) RegisterHandlers() {
+	r := f.Base.Handler.(*chi.Mux)
 
 	r.Route(base, func(r chi.Router) {
-		r.Get("/ping", PingHandler)
 		r.Get("/metadata", MetadataHandler)
 	})
 
@@ -28,44 +32,34 @@ func (fserver *FHIRD) RegisterHandlers() {
 		w.WriteHeader(405)
 		w.Write([]byte("Not Allowed"))
 	})
+
+	f.USCoreProfileResourcesHandlers()
 }
 
-func (fserver *FHIRD) USCoreProfileResourcesHandlers() {
-	r := fserver.Base.Handler.(*chi.Mux)
-
-	l := fserver.Logger
+func (f *FHIRD) USCoreProfileResourcesHandlers() {
+	r := f.Base.Handler.(*chi.Mux)
+	// l := f.Logger.Sugar()
 
 	for k, _ := range USCoreProfileResources {
-		r.Route(fmt.Sprintf("%s/%s", base, k), func(r chi.Router) {
+		rr := k
+		r.Route(fmt.Sprintf("%s/%s", base, rr), func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
-
-				l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
+				// generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
+				// l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
 
 				w.WriteHeader(200)
 				w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
 			})
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
+				// generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
 
-				l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("POST")
+				// l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("POST")
 
 				w.WriteHeader(200)
 				w.Write([]byte(fmt.Sprintf("POST %s", r.URL.Path)))
 			})
 		})
-	}
-}
-
-func PingHandler(w http.ResponseWriter, r *http.Request) {
-	pingEndpoint := "/ping"
-
-	if r.Method == "GET" || r.Method == "HEAD" && r.URL.Path == pingEndpoint {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("."))
-		return
 	}
 }
 
