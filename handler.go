@@ -1,86 +1,38 @@
-package main
+package fhird
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var version = 1
-var base = fmt.Sprintf("/api/v%d", version)
+func (s *Server) MountHandlers() {
+	r := s.Srv.Handler.(*chi.Mux)
 
-type IndexPageContext struct {
-	Title  string `json:"title"`
-	Header string `json:"header"`
-}
+	r.Get("/metadata", s.GetCapabilityStmt)
 
-func (f *FHIRD) RegisterHandlers() {
-	r := f.Base.Handler.(*chi.Mux)
-
-	r.Route(base, func(r chi.Router) {
-		r.Get("/metadata", MetadataHandler)
+	r.Route("/", func(r chi.Router) {
+		r.Get("/CapabilityStatement", s.GetCapabilityStmt)
 	})
 
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
-		w.Write([]byte("Not Found"))
+	// Patient
+	// https://build.fhir.org/ig/HL7/US-Core/StructureDefinition-us-core-patient.html
+	r.Route("/Patient", func(r chi.Router) {
+		r.Get("/", s.PatientSearch)
 	})
-
-	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(405)
-		w.Write([]byte("Not Allowed"))
-	})
-
-	f.USCoreProfileResourcesHandlers()
 }
 
-func (f *FHIRD) USCoreProfileResourcesHandlers() {
-	r := f.Base.Handler.(*chi.Mux)
-	// l := f.Logger.Sugar()
-
-	for k, _ := range USCoreProfileResources {
-		rr := k
-		r.Route(fmt.Sprintf("%s/%s", base, rr), func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				// generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
-				// l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("GET")
-
-				w.WriteHeader(200)
-				w.Write([]byte(fmt.Sprintf("GET %s", r.URL.Path)))
-			})
-
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				// generalParams := r.Context().Value(ParamsCtxKey).(Paramateres)
-
-				// l.Info().Str("method", r.Method).Str("resource", k).Interface("params", generalParams).Str("path", r.URL.Path).Msg("POST")
-
-				w.WriteHeader(200)
-				w.Write([]byte(fmt.Sprintf("POST %s", r.URL.Path)))
-			})
-		})
-	}
+func (s *Server) PatientSearch(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("Patient Search"))
 }
 
-func MetadataHandler(w http.ResponseWriter, r *http.Request) {
-	stmt, err := GetCapabilityStatement()
-
-	if err != nil {
-		fmt.Printf("error getting capability statement: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("server error"))
+func (s *Server) GetCapabilityStmt(w http.ResponseWriter, r *http.Request) {
+	if len(s.CapStmt) == 0 {
+		w.WriteHeader(500)
+		w.Write([]byte("Capability Statement is empty"))
+		return
 	}
-
-	cap, err := json.Marshal(stmt)
-
-	if err != nil {
-		fmt.Printf("error marshalling capability statement: %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("server error"))
-	}
-
-	w.Header().Set("Content-Type", "application/fhir+json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(cap)
+	w.WriteHeader(200)
+	w.Write(s.CapStmt)
 }

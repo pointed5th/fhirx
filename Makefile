@@ -1,15 +1,21 @@
-.PHONY: test build clean
+.PHONY: build test clean
 
-name = fhird
-build_dir = build
-os = $(shell go env GOOS)
-arch = $(shell go env GOARCH)
-port = 9090
-image_version = 1.0.0
-image_tag = $(name):v$(image_version)
-container = $(name)
+NAME=fhird
+BUILD_DIR=build
+TARGET=$(BUILD_DIR)/$(NAME)
+SRC=./cmd/server/main.go
+OS=$(shell go env GOOS)
+ARCH=$(shell go env GOARCH)
+VERSION=1.0.0
+DOCKER_IMAGE=$(NAME)
+DOCKER_IMAGE_TAG=$(NAME):v$(VERSION)
+DOCKER_CONTAINER_NAME=$(NAME)-container
 
-export DOCKER_BUILDKIT=1
+build:
+	GOOS=$(OS) GOARCH=$(ARCH) CGO_ENABLED=0 go build -o $(TARGET) $(SRC)
+
+docker-build:
+	docker build -t $(DOCKER_IMAGE_TAG) -f Dockerfile.multistage . --no-cache
 
 test:
 	go test -v ./...
@@ -18,25 +24,52 @@ clean:
 	rm -rf $(build_dir)/*
 	go clean
 
-run-server:
-	$(build_dir)/$(name) --verbose
+run: build
+	$(TARGET)
 
-build-server:
-	GOOS=$(os) GOARCH=amd64 CGO_ENABLED=0 go build -o $(build_dir)/$(name) .
 
-build-image:
-	docker build -t $(image_tag) -f Dockerfile.multistage .
+# .PHONY: test build clean
 
-start-container:
-	docker run -p $(port):$(port) --name $(container) --rm $(image_tag) 
+# NAME=fructose
+# BUILD_DIR=bin
+# PORT = 9090
+# DOCKER_CONTAINER_NAME = $(name)-container
+# DOCKER_IMAGE_VERSION = 0.0.1
+# DOCKER_IMAGE_TAGE = $(name):v$(image_version)
+# AIR_HOTRELOAD = bin/air
+# GOOS=$(shell go env GOOS) GOARCH=$(shell go env GOARCH) CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(NAME) .
 
-stop-container:
-	docker stop $(container)
+# export DOCKER_BUILDKIT=1
 
-start: build-image start-container
+# test:
+# 	go test -v ./...
 
-stop: stop-container
+# test-db:
+# 	go test -timeout 30s -run ^TestNewDbHandler -v ./...
 
-push-image:
-	docker tag $(image_tag) registry.digitalocean.com/fructose/$(image_tag)
-	docker push registry.digitalocean.com/fructose/$(image_tag)
+# clean:
+# 	rm -rf $(build_dir)/*
+# 	go clean
+
+# dev:
+# 	if [ ! -f $(air_hotreload) ]; then \
+# 		curl -sSfL https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh -s; \
+# 	fi
+
+# 	$(air_hotreload) -c .air.toml
+
+# build:
+# 	GOOS=$(os) GOARCH=${arch} CGO_ENABLED=0 go build -o $(build_dir)/$(name) .	
+	
+# build-image:
+# 	docker build -t $(image_tag) -f Dockerfile.multistage . --no-cache
+
+# start:
+# 	docker run -p $(port):$(port) --name $(container) --rm $(image_tag) 
+
+# stop:
+# 	docker stop $(container)
+
+# push:
+# 	docker tag $(image_tag) registry.digitalocean.com/fructose/$(image_tag)
+# 	docker push registry.digitalocean.com/fructose/$(image_tag)

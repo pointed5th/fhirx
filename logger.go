@@ -1,4 +1,4 @@
-package main
+package fhird
 
 import (
 	"os"
@@ -11,41 +11,26 @@ type Logger struct {
 	*zap.Logger
 }
 
-type LogEntry struct {
-	Level      string `json:"level"`
-	Time       string `json:"time"`
-	Caller     string `json:"caller"`
-	Message    string `json:"message"`
-	Stacktrace string `json:"stacktrace"`
-}
+func DefaultLogger() *Logger {
+	encoder := zapcore.EncoderConfig{
+		MessageKey:    "msg",
+		LevelKey:      "level",
+		TimeKey:       "time",
+		CallerKey:     "caller",
+		StacktraceKey: "stacktrace",
+		LineEnding:    zapcore.DefaultLineEnding,
+		EncodeLevel:   zapcore.CapitalColorLevelEncoder,
+		EncodeTime:    zapcore.ISO8601TimeEncoder,
+		EncodeCaller:  zapcore.FullCallerEncoder,
+	}
 
-var EncoderConfig = zapcore.EncoderConfig{
-	TimeKey:        "time",
-	LevelKey:       "level",
-	NameKey:        "logger",
-	CallerKey:      "caller",
-	MessageKey:     "message",
-	StacktraceKey:  "stacktrace",
-	LineEnding:     zapcore.DefaultLineEnding,
-	EncodeLevel:    zapcore.CapitalLevelEncoder,
-	EncodeTime:     zapcore.ISO8601TimeEncoder,
-	EncodeDuration: zapcore.SecondsDurationEncoder,
-	EncodeCaller:   zapcore.ShortCallerEncoder,
-}
-
-func NewConsoleLogger() (*Logger, error) {
-	encoder := zapcore.NewJSONEncoder(EncoderConfig)
-
-	sync := zapcore.AddSync(os.Stdout)
-
-	fileLogger := zap.New(
-		zapcore.NewCore(encoder, sync, zapcore.DebugLevel),
-		zap.AddCaller(),
-		zap.AddStacktrace(zap.ErrorLevel),
-		zap.AddStacktrace(zap.WarnLevel),
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(encoder),
+		zapcore.AddSync(zapcore.AddSync(os.Stdout)),
+		zap.DebugLevel,
 	)
 
 	return &Logger{
-		Logger: fileLogger,
-	}, nil
+		Logger: zap.New(core, zap.AddCallerSkip(1), zap.AddStacktrace(zap.ErrorLevel)),
+	}
 }

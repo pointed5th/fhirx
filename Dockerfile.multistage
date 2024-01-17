@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-ENV PORT 9090
+ENV PORT 9292
 
 RUN make build-server
 
@@ -20,7 +20,6 @@ WORKDIR /app
 
 COPY --from=build-stage /app/ /app/
 
-EXPOSE 9090/tcp
+EXPOSE 9292
 
-CMD ["/app/bin/fhird", "--verbose"]
-
+CMD ["/app/build/fhird"]

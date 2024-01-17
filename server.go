@@ -1,145 +1,145 @@
-package main
+package fhird
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/docgen"
-	"github.com/rs/zerolog"
+	"github.com/google/fhir/go/fhirversion"
+	"github.com/google/fhir/go/jsonformat"
 )
 
 type Config struct {
 	Port        string
-	Verbose     bool
+	FHIRVersion fhirversion.Version
 	InContainer bool
 	CGOEnabled  bool
+	HTTPTimeout time.Duration
+	DataDir     string
+	Timezone    string
 }
 
-type FHIRD struct {
-	Base   *http.Server
-	Config Config
-	Logger *Logger
+type Server struct {
+	Srv     *http.Server
+	Logger  *Logger
+	Config  Config
+	Profile *USCoreProfile
+	CapStmt []byte // unmarshall once
 }
 
-func NewFHIRD(c Config) (*FHIRD, error) {
-	l, err := NewConsoleLogger()
+func DefaultConfig() Config {
+	return Config{
+		Port:        "9292",
+		DataDir:     "./data",
+		InContainer: false,
+		CGOEnabled:  false,
+		FHIRVersion: fhirversion.R4,
+		HTTPTimeout: 6 * time.Second,
+		Timezone:    "UTC",
+	}
+}
+
+func NewServer(config Config) (*Server, error) {
+	cap, err := DefaultCapability()
 
 	if err != nil {
 		return nil, err
 	}
 
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	marshaller, err := jsonformat.NewMarshaller(true, "", " ", config.FHIRVersion)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &FHIRD{
-		Base: &http.Server{
+	capjson, err := marshaller.MarshalResource(cap)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{
+		Srv: &http.Server{
 			Handler: chi.NewRouter(),
-			Addr:    ":" + c.Port,
+			Addr:    ":" + config.Port,
 		},
-		Config: c,
-		Logger: l,
+		Config:  config,
+		Logger:  DefaultLogger(),
+		Profile: NewUSCoreProfile(config.FHIRVersion),
+		CapStmt: capjson,
 	}, nil
 }
 
-func (f *FHIRD) Serve() error {
-	l := f.Logger.Sugar()
+func (f *Server) Start() error {
+	f.MountMiddlewares()
+	f.MountHandlers()
+	f.PrintRoutes()
 
-	var err error
-
-	err = f.RegisterMiddlewares()
-
-	if err != nil {
-		return err
-	}
-
-	f.RegisterHandlers()
-
-	if err != nil {
-		return err
-	}
-
-	l.Info("registered handlers successfully")
-
-	if err != nil {
-		return errors.New("failed to create logger")
-	}
-
-	l.Infof("listening on port %s", f.Config.Port)
-
-	err = f.Base.ListenAndServe()
+	err := f.Srv.ListenAndServe()
 
 	if err != nil && err != http.ErrServerClosed {
 		return err
 	}
+	return nil
+}
+
+func (f *Server) GenerateDocs() error {
+	r := f.Srv.Handler.(*chi.Mux)
+
+	rjson, err := os.OpenFile("routes.json", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	defer rjson.Close()
+
+	_, err = rjson.WriteString("\n")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = rjson.WriteString(docgen.JSONRoutesDoc(r))
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (f *FHIRD) GenerateDocs() error {
-	r := f.Base.Handler.(*chi.Mux)
+func (f *Server) PrintRoutes() error {
+	router := f.Srv.Handler.(*chi.Mux)
 
-	doc := docgen.MarkdownRoutesDoc(r, docgen.MarkdownOpts{
-		ProjectPath: "https://github.com/hawyar/fhird",
-		Intro:       "fructose API docs",
-	})
+	fmt.Println()
 
-	readme, err := os.OpenFile("README.md", os.O_APPEND|os.O_WRONLY, 0644)
+	theader := fmt.Sprintf("%-6s | %-6s\n", "METHOD", "ROUTE")
+	tsep := fmt.Sprintf("%-6s + %-6s\n", "------", "------")
+	fmt.Print(theader)
+	fmt.Print(tsep)
 
-	if err != nil {
-		return err
-	}
-
-	defer readme.Close()
-
-	_, err = readme.WriteString("\n")
-
-	if err != nil {
-		return err
-	}
-
-	_, err = readme.WriteString(doc)
-
-	if err != nil {
-		return err
-	}
-
-	l := f.Logger.Sugar()
-
-	l.Info("Generated docs successfully")
-
-	return nil
-}
-func (f *FHIRD) PrintRoutes() error {
-	router := f.Base.Handler.(*chi.Mux)
-
-	if f.Config.Verbose {
-		fmt.Println()
-		theader := fmt.Sprintf("%-6s | %-6s\n", "METHOD", "ROUTE")
-		tsep := fmt.Sprintf("%-6s + %-6s\n", "------", "------")
-		fmt.Print(theader)
-		fmt.Print(tsep)
-
-		walker := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			if route != "/" && route[len(route)-1:] == "/" {
-				route = route[:len(route)-1]
-			}
-
-			fmt.Printf("%-6s | %-6s\n", method, route)
-			return nil
+	fmt.Printf("%-6s | %-6s\n", "GET", "/ping")
+	fmt.Printf("%-6s---%-6s\n", "------", "------")
+	walker := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		if route != "/" && route[len(route)-1:] == "/" {
+			route = route[:len(route)-1]
 		}
 
-		if err := chi.Walk(router, walker); err != nil {
-			return err
-		}
+		fmt.Printf("%-6s | %-6s\n", method, route)
 
-		fmt.Print(tsep + "\n")
+		// skip the last route
+		fmt.Printf("%-6s---%-6s\n", "------", "------")
+		return nil
 	}
+
+	if err := chi.Walk(router, walker); err != nil {
+		return err
+	}
+	// fmt.Print(tsep + "\n")
 
 	return nil
 }

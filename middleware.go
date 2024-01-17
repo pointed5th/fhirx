@@ -1,4 +1,4 @@
-package main
+package fhird
 
 import (
 	"context"
@@ -12,25 +12,7 @@ import (
 
 type FHIRMIMEType int
 type SummaryParamValue int
-type ParamsCtxKeyType string
-
-type Paramateres struct {
-	Format   string `json:"_format,omitempty"`
-	Pretty   bool   `json:"_pretty,omitempty"`
-	Summary  string `json:"_summary,omitempty"`
-	Elements string `json:"_elements,omitempty"`
-}
-
-type RequestCtx struct {
-	Headers     http.Header `json:"headers"`
-	Host        string      `json:"host"`
-	Method      string      `json:"method"`
-	RemoteAddr  string      `json:"remote_addr"`
-	RequestURI  string      `json:"request_uri"`
-	URL         string      `json:"url"`
-	UserAgent   string      `json:"user_agent"`
-	Paramateres Paramateres `json:"params"`
-}
+type CtxKey string
 
 const (
 	FHIRJSON FHIRMIMEType = iota
@@ -44,8 +26,27 @@ const (
 	SummaryCount
 	SummaryFalse
 
-	ParamsCtxKey ParamsCtxKeyType = "params"
+	ParamsKey CtxKey = "params"
 )
+
+type Paramaters struct {
+	Format   string `json:"_format,omitempty"`
+	Pretty   bool   `json:"_pretty,omitempty"`
+	Summary  string `json:"_summary,omitempty"`
+	Elements string `json:"_elements,omitempty"`
+}
+
+type RequestCtx struct {
+	Headers     http.Header `json:"headers"`
+	Host        string      `json:"host"`
+	Method      string      `json:"method"`
+	RemoteAddr  string      `json:"remote_address"`
+	RequestURI  string      `json:"request_uri"`
+	URL         string      `json:"url"`
+	UserAgent   string      `json:"user_agent"`
+	Paramateres Paramaters  `json:"parameters"`
+	ContentBody string      `json:"content_body"`
+}
 
 func (s SummaryParamValue) String() string {
 	switch s {
@@ -79,31 +80,28 @@ func (f FHIRMIMEType) String() string {
 	}
 }
 
-func (s Paramateres) String() string {
+func (s Paramaters) String() string {
 	return fmt.Sprintf("format=%s pretty=%t summary=%s elements=%s", s.Format, s.Pretty, s.Summary, s.Elements)
 }
 
-func (f *FHIRD) RegisterMiddlewares() error {
-	r := f.Base.Handler.(*chi.Mux)
-
-	r.Use(middleware.RealIP)
-	// r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{Logger: &f.Logger}))
-	r.Use(middleware.RedirectSlashes)
+func (f *Server) MountMiddlewares() {
+	r := f.Srv.Handler.(*chi.Mux)
 	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.DefaultLogger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.CleanPath)
+	r.Use(middleware.RedirectSlashes)
+	r.Use(middleware.Timeout(f.Config.HTTPTimeout))
+	r.Use(middleware.AllowContentType("application/fhir+json", "application/json"))
+	r.Use(middleware.SetHeader("Content-Type", "application/fhir+json"))
+	r.Use(SetTimeZone)
 	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(middleware.AllowContentType(FHIRJSON.String(), FHIRXML.String()))
-	r.Use(f.WithRequestLogger)
-	r.Use(WithSetDefaultTimeZone)
-	r.Use(WithSetGeneralParameters)
-	return nil
 }
 
-// SetGeneralParameters sets any provided parameters in the request context
-func WithSetGeneralParameters(next http.Handler) http.Handler {
+func (f *Server) ParseURLParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var params Paramateres
+		var params Paramaters
 
 		if r.URL.Query().Get("_format") != "" {
 			params.Format = r.URL.Query().Get("_format")
@@ -140,61 +138,14 @@ func WithSetGeneralParameters(next http.Handler) http.Handler {
 			// TODO: parse elements and validate given elements based on the resource
 		}
 
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, ParamsCtxKey, params)
+		ctx := context.WithValue(r.Context(), ParamsKey, params)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (f *FHIRD) WithRequestLogger(next http.Handler) http.Handler {
+func SetTimeZone(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqInfo := RequestCtx{
-			Headers:    r.Header,
-			Host:       r.Host,
-			Method:     r.Method,
-			RemoteAddr: r.RemoteAddr,
-			RequestURI: r.RequestURI,
-			URL:        r.URL.String(),
-			UserAgent:  r.UserAgent(),
-		}
-
-		l := f.Logger.Sugar()
-
-		l.Infow("request",
-			"headers", reqInfo.Headers,
-			"host", reqInfo.Host,
-			"method", reqInfo.Method,
-			"remote_addr", reqInfo.RemoteAddr,
-			"request_uri", reqInfo.RequestURI,
-			"url", reqInfo.URL,
-		)
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func WithSetDefaultTimeZone(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Header.Set("Date", time.Now().Format(time.RFC1123))
-		next.ServeHTTP(w, r)
-	})
-}
-
-// TODO: implement weak etag based on the resource version change
-func WithSetWeakETag(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("ETag", `W/"weak"`)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func WithNonEmptyContentBody(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ContentLength == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Content length cannot be empty"))
-			return
-		}
+		r.Header.Set("Date", time.Now().UTC().Format(time.RFC3339))
 		next.ServeHTTP(w, r)
 	})
 }

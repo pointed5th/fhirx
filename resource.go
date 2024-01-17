@@ -1,4 +1,4 @@
-package main
+package fhird
 
 import (
 	"encoding/json"
@@ -24,6 +24,7 @@ var USCoreProfileResources = map[string]fhir.ResourceType{
 	"Immunization":          fhir.ResourceTypeImmunization,
 	"Location":              fhir.ResourceTypeLocation,
 	"Medication":            fhir.ResourceTypeMedication,
+	"MedicationDispense":    fhir.ResourceTypeMedicationDispense,
 	"MedicationRequest":     fhir.ResourceTypeMedicationRequest,
 	"Observation":           fhir.ResourceTypeObservation,
 	"Organization":          fhir.ResourceTypeOrganization,
@@ -35,9 +36,10 @@ var USCoreProfileResources = map[string]fhir.ResourceType{
 	"QuestionnaireResponse": fhir.ResourceTypeQuestionnaireResponse,
 	"RelatedPerson":         fhir.ResourceTypeRelatedPerson,
 	"ServiceRequest":        fhir.ResourceTypeServiceRequest,
+	"Specimen":              fhir.ResourceTypeSpecimen,
 }
 
-func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
+func CapabilityStatement() *fhir.CapabilityStatement {
 	port := os.Getenv("PORT")
 
 	if port == "" {
@@ -109,7 +111,7 @@ func GetCapabilityStatement() (*fhir.CapabilityStatement, error) {
 		},
 		Format: []string{FHIRXML.String(), FHIRJSON.String()},
 		Rest:   rest,
-	}, nil
+	}
 }
 
 func NewPatient(r *http.Request) (fhir.Patient, error) {

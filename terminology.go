@@ -1,4 +1,4 @@
-package main
+package fhird
 
 import (
 	"encoding/json"
