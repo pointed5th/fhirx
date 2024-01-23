@@ -4,81 +4,92 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/docgen"
-	"github.com/google/fhir/go/fhirversion"
-	"github.com/google/fhir/go/jsonformat"
 )
 
-type Config struct {
-	Port        string
-	FHIRVersion fhirversion.Version
-	InContainer bool
-	CGOEnabled  bool
-	HTTPTimeout time.Duration
-	DataDir     string
-	Timezone    string
-}
-
 type Server struct {
-	Srv     *http.Server
-	Logger  *Logger
-	Config  Config
-	Profile *USCoreProfile
-	CapStmt []byte // unmarshall once
-}
-
-func DefaultConfig() Config {
-	return Config{
-		Port:        "9292",
-		DataDir:     "./data",
-		InContainer: false,
-		CGOEnabled:  false,
-		FHIRVersion: fhirversion.R4,
-		HTTPTimeout: 6 * time.Second,
-		Timezone:    "UTC",
-	}
+	*http.Server
+	Logger        *Logger
+	USCoreProfile *USCoreProfile
+	Auth          *Auth
+	Config        Config
 }
 
 func NewServer(config Config) (*Server, error) {
-	cap, err := DefaultCapability()
-
-	if err != nil {
-		return nil, err
-	}
-
-	marshaller, err := jsonformat.NewMarshaller(true, "", " ", config.FHIRVersion)
-
-	if err != nil {
-		return nil, err
-	}
-
-	capjson, err := marshaller.MarshalResource(cap)
+	uscore, err := NewUSCoreProfile(config)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
-		Srv: &http.Server{
+		Server: &http.Server{
 			Handler: chi.NewRouter(),
 			Addr:    ":" + config.Port,
 		},
-		Config:  config,
-		Logger:  DefaultLogger(),
-		Profile: NewUSCoreProfile(config.FHIRVersion),
-		CapStmt: capjson,
+		Logger:        DefaultLogger(),
+		USCoreProfile: uscore,
+		Config:        config,
+		Auth:          NewAuth(),
 	}, nil
 }
 
-func (f *Server) Start() error {
-	f.MountMiddlewares()
-	f.MountHandlers()
-	f.PrintRoutes()
+func (s *Server) Serve() error {
+	r := s.Handler.(*chi.Mux)
 
-	err := f.Srv.ListenAndServe()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.DefaultLogger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.CleanPath)
+	r.Use(middleware.RedirectSlashes)
+	r.Use(middleware.Timeout(s.Config.HTTPTimeout))
+	r.Use(middleware.AllowContentType("application/fhir+json", "application/json"))
+	r.Use(middleware.SetHeader("Content-Type", "application/fhir+json"))
+	r.Use(SetTimeZone)
+	r.Use(ParseURLParams)
+	r.Use(middleware.Heartbeat("/ping"))
+
+	authm := s.Auth.Middleware()
+	authRoutes, avaRoutes := s.Auth.Handlers()
+
+	r.With(authm.Auth).Route("/protected", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("protected\n"))
+		})
+	})
+
+	r.Mount("/auth", authRoutes)  // add auth handlers
+	r.Mount("/avatar", avaRoutes) // add avatar handler
+
+	r.With(s.USCoreProfile.ValidateRequestedResource).Route("/", func(r chi.Router) {
+		r.Route("/CapabilityStatement", s.USCoreProfile.CapabilityStatement)
+		r.Route("/AllergyIntolerance", s.USCoreProfile.AllergyIntolerance)
+		r.Route("/CareTeam", s.USCoreProfile.CareTeam)
+		r.Route("/DocumentReference", s.USCoreProfile.DocumentReference)
+		r.Route("/Observation", s.USCoreProfile.Observation)
+		r.Route("/Patient", s.USCoreProfile.Patient)
+		r.Route("/Encounter", s.USCoreProfile.Encounter)
+		r.Route("/Location", s.USCoreProfile.Location)
+		r.Route("/Goal", s.USCoreProfile.Goal)
+		r.Route("/Coverage", s.USCoreProfile.Coverage)
+		r.Route("/Immunization", s.USCoreProfile.Immunization)
+		r.Route("/Device", s.USCoreProfile.Device)
+		r.Route("/Medication", s.USCoreProfile.Medication)
+	})
+
+	s.PrintRoutes()
+
+	err := s.GenerateDocs()
+
+	if err != nil {
+		return err
+	}
+
+	err = s.ListenAndServe()
 
 	if err != nil && err != http.ErrServerClosed {
 		return err
@@ -87,9 +98,9 @@ func (f *Server) Start() error {
 }
 
 func (f *Server) GenerateDocs() error {
-	r := f.Srv.Handler.(*chi.Mux)
+	r := f.Handler.(*chi.Mux)
 
-	rjson, err := os.OpenFile("routes.json", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	rjson, err := os.OpenFile("server_info.json", os.O_WRONLY|os.O_CREATE, 0644)
 
 	if err != nil {
 		return err
@@ -113,7 +124,7 @@ func (f *Server) GenerateDocs() error {
 }
 
 func (f *Server) PrintRoutes() error {
-	router := f.Srv.Handler.(*chi.Mux)
+	router := f.Handler.(*chi.Mux)
 
 	fmt.Println()
 
@@ -122,8 +133,9 @@ func (f *Server) PrintRoutes() error {
 	fmt.Print(theader)
 	fmt.Print(tsep)
 
-	fmt.Printf("%-6s | %-6s\n", "GET", "/ping")
-	fmt.Printf("%-6s---%-6s\n", "------", "------")
+	// fmt.Printf("%-6s | %-6s\n", "GET", "/ping")
+	// fmt.Printf("%-6s---%-6s\n", "------", "------")
+
 	walker := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		if route != "/" && route[len(route)-1:] == "/" {
 			route = route[:len(route)-1]

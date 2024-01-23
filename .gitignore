@@ -6,3 +6,4 @@ build
 bin
 tmp
 .air.toml
+server_info.json

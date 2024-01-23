@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 type FHIRMIMEType int
@@ -80,26 +77,7 @@ func (f FHIRMIMEType) String() string {
 	}
 }
 
-func (s Paramaters) String() string {
-	return fmt.Sprintf("format=%s pretty=%t summary=%s elements=%s", s.Format, s.Pretty, s.Summary, s.Elements)
-}
-
-func (f *Server) MountMiddlewares() {
-	r := f.Srv.Handler.(*chi.Mux)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.DefaultLogger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.CleanPath)
-	r.Use(middleware.RedirectSlashes)
-	r.Use(middleware.Timeout(f.Config.HTTPTimeout))
-	r.Use(middleware.AllowContentType("application/fhir+json", "application/json"))
-	r.Use(middleware.SetHeader("Content-Type", "application/fhir+json"))
-	r.Use(SetTimeZone)
-	r.Use(middleware.Heartbeat("/ping"))
-}
-
-func (f *Server) ParseURLParams(next http.Handler) http.Handler {
+func ParseURLParams(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var params Paramaters
 
@@ -148,4 +126,8 @@ func SetTimeZone(next http.Handler) http.Handler {
 		r.Header.Set("Date", time.Now().UTC().Format(time.RFC3339))
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s Paramaters) String() string {
+	return fmt.Sprintf("format=%s pretty=%t summary=%s elements=%s", s.Format, s.Pretty, s.Summary, s.Elements)
 }

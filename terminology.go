@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/samply/golang-fhir-models/fhir-models/fhir"
@@ -92,7 +92,7 @@ func (l *LOINCTerminologyService) Capability() (*fhir.Bundle, error) {
 		return nil, errors.New("LOINC terminology service is not available")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return nil, err
